@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChordCraft — Pop Piano Inversion & Scale Trainer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            studio: {
+              950: '#090b10',
+              900: '#10141d',
+              800: '#181e2c',
+              700: '#232c40',
+              600: '#33415c',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* Realistic 3D-feel Piano Keys */
+    .piano-wrapper {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .white-key {
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 78%, #e2e8f0 100%);
+      border: 1px solid #94a3b8;
+      border-bottom: 5px solid #cbd5e1;
+      border-radius: 0 0 8px 8px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 6px rgba(0,0,0,0.4);
+      transition: transform 0.06s ease, background 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .white-key:active, .white-key.pressed {
+      transform: translateY(3px);
+      border-bottom-width: 2px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .white-key.highlighted {
+      background: linear-gradient(180deg, #6ee7b7 0%, #10b981 80%, #059669 100%);
+      border-color: #047857;
+      border-bottom: 5px solid #065f46;
+      color: #022c22;
+    }
+
+    .white-key.highlighted.bass-note {
+      background: linear-gradient(180deg, #fcd34d 0%, #f59e0b 80%, #d97706 100%);
+      border-color: #b45309;
+      border-bottom: 5px solid #92400e;
+      color: #451a03;
+    }
+
+    .black-key {
+      background: linear-gradient(180deg, #27272a 0%, #18181b 70%, #09090b 100%);
+      border: 1px solid #000000;
+      border-bottom: 6px solid #000000;
+      border-radius: 0 0 6px 6px;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.18), 0 5px 8px rgba(0,0,0,0.65);
+      transition: transform 0.06s ease, background 0.12s ease;
+      z-index: 20;
+    }
+
+    .black-key:active, .black-key.pressed {
+      transform: translateY(3px);
+      border-bottom-width: 2px;
+    }
+
+    .black-key.highlighted {
+      background: linear-gradient(180deg, #34d399 0%, #059669 75%, #064e3b 100%);
+      border-color: #022c22;
+      border-bottom: 6px solid #022c22;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.55);
+    }
+
+    .black-key.highlighted.bass-note {
+      background: linear-gradient(180deg, #fbbf24 0%, #d97706 75%, #78350f 100%);
+      border-color: #451a03;
+      border-bottom: 6px solid #451a03;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.55);
+    }
+  </style>
+</head>
+<body class="bg-studio-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
+
+  <!-- Top Navigation & Audio Unlock Bar -->
+  <header class="bg-studio-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- Brand -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-950/50">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-bold text-base sm:text-lg tracking-tight text-white leading-none">ChordCraft</h1>
+          <p class="text-[11px] text-slate-400 mt-0.5">Pop Piano Theory & Ear Lab</p>
+        </div>
+      </div>
+
+      <!-- Right Controls: Test Sound + Mute Toggle + Cheat Sheet -->
+      <div class="flex items-center gap-2">
+        <button id="test-sound-btn" onclick="testAudioChime()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-xs font-semibold text-emerald-300 transition active:scale-95" title="Unlock and test piano audio (check device silent switch on iPad/iPhone)">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Test Sound</span>
+        </button>
+
+        <button id="audio-toggle-btn" onclick="toggleMute()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-studio-800 hover:bg-studio-700 border border-slate-700 text-xs font-medium text-slate-200 transition" title="Toggle Auto-Play Sound">
+          <svg id="icon-sound-on" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <svg id="icon-sound-off" class="w-4 h-4 text-rose-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+          <span class="hidden sm:inline" id="audio-label">Sound: On</span>
+        </button>
+
+        <button onclick="toggleCheatSheet()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-studio-800 hover:bg-studio-700 border border-slate-700 text-xs font-medium text-amber-300 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          <span>Cheat Sheet</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-5 flex flex-col gap-5">
+
+    <!-- Mode Switcher & Session Score Strip -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <!-- Mode Tabs -->
+      <div class="inline-flex p-1 bg-studio-900 border border-slate-800 rounded-2xl w-full sm:w-auto">
+        <button id="tab-inversions" onclick="switchMode('inversions')" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-emerald-600 text-white shadow-md">
+          1. Chord Inversions
+        </button>
+        <button id="tab-scales" onclick="switchMode('scales')" class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-semibold transition-all text-slate-400 hover:text-white">
+          2. Scale Chords
+        </button>
+      </div>
+
+      <!-- Live Stats Bar -->
+      <div class="flex items-center justify-between sm:justify-end gap-3 bg-studio-900/70 border border-slate-800/90 rounded-2xl px-4 py-2">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-slate-400">Streak:</span>
+          <span id="stat-streak" class="font-mono font-bold text-sm text-amber-400">0 🔥</span>
+        </div>
+        <div class="h-4 w-px bg-slate-800"></div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-slate-400">Score:</span>
+          <span id="stat-score" class="font-mono font-bold text-sm text-emerald-400">0/0</span>
+          <span id="stat-accuracy" class="text-xs text-slate-500">(—)</span>
+        </div>
+        <div class="h-4 w-px bg-slate-800"></div>
+        <button onclick="toggleMissedModal()" class="text-xs font-medium text-slate-300 hover:text-white underline decoration-slate-600 underline-offset-4">
+          Missed (<span id="missed-count">0</span>)
+        </button>
+      </div>
+    </div>
+
+    <!-- Mode-Specific Filter / Options Toolbar -->
+    <div class="bg-studio-900 border border-slate-800 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <!-- Inversion Mode Controls -->
+      <div id="controls-inversions" class="flex flex-wrap items-center gap-3 w-full justify-between">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Key Pool:</span>
+          <div class="inline-flex rounded-xl bg-studio-950 p-1 border border-slate-800">
+            <button id="pool-beginner" onclick="setKeyPool('beginner')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-emerald-300 transition">
+              Pop Essentials (C, G, F, Am, Em, Dm)
+            </button>
+            <button id="pool-all" onclick="setKeyPool('all')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+              All 15 Pop Keys
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Input:</span>
+          <div class="inline-flex rounded-xl bg-studio-950 p-1 border border-slate-800">
+            <button id="input-type-btn" onclick="setInputStyle('type')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-white transition">
+              Type Answer
+            </button>
+            <button id="input-choice-btn" onclick="setInputStyle('choice')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+              Quick Tap
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scale Chords Mode Controls -->
+      <div id="controls-scales" class="hidden flex-wrap items-center gap-3 w-full justify-between">
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="scale-key-select" class="text-xs font-semibold uppercase tracking-wider text-slate-400">Target Key:</label>
+          <select id="scale-key-select" onchange="onScaleKeyChange()" class="bg-studio-950 border border-slate-700 text-white text-xs sm:text-sm font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500">
+            <option value="RANDOM">🎲 Random Pop Key Mix</option>
+            <optgroup label="Major Keys">
+              <option value="C Major">C Major (C - Dm - Em - F - G - Am)</option>
+              <option value="G Major">G Major (G - Am - Bm - C - D - Em)</option>
+              <option value="D Major">D Major (D - Em - F#m - G - A - Bm)</option>
+              <option value="A Major">A Major (A - Bm - C#m - D - E - F#m)</option>
+              <option value="F Major">F Major (F - Gm - Am - Bb - C - Dm)</option>
+              <option value="Bb Major">Bb Major (Bb - Cm - Dm - Eb - F - Gm)</option>
+              <option value="Eb Major">Eb Major (Eb - Fm - Gm - Ab - Bb - Cm)</option>
+            </optgroup>
+            <optgroup label="Natural Minor Keys">
+              <option value="A Minor">A Minor (Am - Bdim - C - Dm - Em - F - G)</option>
+              <option value="E Minor">E Minor (Em - F#dim - G - Am - Bm - C - D)</option>
+              <option value="D Minor">D Minor (Dm - Edim - F - Gm - Am - Bb - C)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-slate-300 select-none">
+          <input type="checkbox" id="include-dim-checkbox" onchange="generateNewQuestion()" class="rounded bg-studio-950 border-slate-700 text-emerald-500 focus:ring-emerald-500" />
+          <span>Include 7th degree (vii° / ii°)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Interactive Piano Stage -->
+    <section class="bg-studio-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-3">
+          <span id="stage-badge" class="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+            Identify the Chord & Inversion
+          </span>
+          <div id="legend-container" class="flex items-center gap-3 text-xs text-slate-400">
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-sm bg-amber-400 inline-block"></span> Lowest Note (Bass)
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-sm bg-emerald-400 inline-block"></span> Upper Notes
+            </span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="playCurrentChord()" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition active:scale-95">
+            <svg class="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+            </svg>
+            <span>Replay Chord <span class="text-slate-400 font-mono ml-1 hidden sm:inline">[Space]</span></span>
+          </button>
+          <button onclick="playArpeggio()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 transition active:scale-95" title="Hear notes one by one">
+            <span>Arpeggiate</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2-Octave Piano Keyboard Container (C3 to B4) -->
+      <div class="w-full overflow-x-auto pb-1">
+        <div id="piano-container" class="piano-wrapper relative mx-auto h-44 sm:h-52 min-w-[600px] max-w-3xl select-none">
+          <!-- Keys generated dynamically via JS -->
+        </div>
+      </div>
+
+      <p class="text-center text-[11px] text-slate-500">
+        Click or tap any key on the piano to audition notes • On iPad/iPhone, ensure your ringer/silent switch is off if you don't hear audio.
+      </p>
+    </section>
+
+    <!-- Question & Answer Card -->
+    <section class="bg-studio-900 border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-xl flex flex-col gap-5">
+      <!-- Prompt Header -->
+      <div class="text-center max-w-2xl mx-auto">
+        <p id="question-subtext" class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-1.5">
+          Look at the lowest note and shape
+        </p>
+        <h2 id="question-prompt" class="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
+          What chord and inversion is highlighted?
+        </h2>
+      </div>
+
+      <!-- Text Input Area (Default) -->
+      <div id="answer-type-container" class="max-w-xl w-full mx-auto flex flex-col gap-3">
+        <form id="answer-form" onsubmit="handleFormSubmit(event)" class="flex flex-col sm:flex-row gap-2.5">
+          <input
+            type="text"
+            id="answer-input"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="e.g., C first inversion, Fm 2nd, G root..."
+            class="flex-1 bg-studio-950 border-2 border-slate-700 focus:border-emerald-500 rounded-2xl px-4 py-3.5 text-base sm:text-lg font-semibold text-white placeholder-slate-500 focus:outline-none transition"
+          />
+          <button
+            type="submit"
+            id="submit-btn"
+            class="px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base shadow-lg shadow-emerald-950/50 transition active:scale-95"
+          >
+            Check
+          </button>
+        </form>
+
+        <!-- Quick Helper Chips for Mobile/Fast Typing -->
+        <div id="quick-chips" class="flex flex-wrap items-center justify-center gap-1.5">
+          <span class="text-[11px] text-slate-500 mr-1">Quick append:</span>
+          <button type="button" onclick="appendText(' root')" class="px-2.5 py-1 rounded-lg bg-studio-800 hover:bg-studio-700 text-xs font-medium text-slate-300 border border-slate-700/70 transition">+ root</button>
+          <button type="button" onclick="appendText(' 1st inversion')" class="px-2.5 py-1 rounded-lg bg-studio-800 hover:bg-studio-700 text-xs font-medium text-slate-300 border border-slate-700/70 transition">+ 1st inversion</button>
+          <button type="button" onclick="appendText(' 2nd inversion')" class="px-2.5 py-1 rounded-lg bg-studio-800 hover:bg-studio-700 text-xs font-medium text-slate-300 border border-slate-700/70 transition">+ 2nd inversion</button>
+          <button type="button" onclick="revealHint()" class="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-xs font-medium text-amber-300 border border-amber-500/30 transition ml-2">Hint</button>
+        </div>
+      </div>
+
+      <!-- Multiple Choice / Quick Tap Container -->
+      <div id="answer-choice-container" class="hidden max-w-2xl w-full mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Feedback Banner -->
+      <div id="feedback-box" class="hidden max-w-2xl w-full mx-auto rounded-2xl p-4 sm:p-5 border transition-all">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span id="feedback-icon" class="text-xl"></span>
+              <h3 id="feedback-title" class="font-bold text-base sm:text-lg"></h3>
+            </div>
+            <p id="feedback-detail" class="text-sm text-slate-300 leading-relaxed"></p>
+            <p id="feedback-theory" class="text-xs font-mono text-slate-400 pt-1"></p>
+          </div>
+          <button
+            id="next-btn"
+            onclick="generateNewQuestion()"
+            class="px-5 py-3 rounded-xl bg-white text-slate-950 hover:bg-slate-200 font-bold text-sm shrink-0 shadow-md transition active:scale-95"
+          >
+            Next Question →
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Cheat Sheet Modal -->
+  <div id="cheatsheet-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this) toggleCheatSheet()">
+    <div class="bg-studio-900 border border-slate-700 rounded-3xl max-w-2xl w-full max-h-[88vh] overflow-y-auto p-6 shadow-2xl space-y-6">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="text-xl font-bold text-white">Pop Piano Quick Reference</h2>
+          <p class="text-xs text-slate-400">Zero sheet music required — memorize shapes & numbers</p>
+        </div>
+        <button onclick="toggleCheatSheet()" class="p-2 rounded-xl bg-studio-800 hover:bg-slate-700 text-slate-300">
+          ✕
+        </button>
+      </div>
+
+      <!-- Inversions Visual Guide -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-400">1. How to Spot Inversions Instantly</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="bg-studio-950 border border-slate-800 rounded-2xl p-3.5 space-y-1.5">
+            <div class="font-bold text-white text-sm">Root Position (1 - 3 - 5)</div>
+            <p class="text-slate-400">Evenly stacked ("snowman" shape). The <span class="text-amber-400 font-semibold">lowest note</span> is the chord name.</p>
+            <div class="font-mono text-emerald-300 pt-1">C Major: C - E - G</div>
+          </div>
+          <div class="bg-studio-950 border border-slate-800 rounded-2xl p-3.5 space-y-1.5">
+            <div class="font-bold text-white text-sm">1st Inversion (3 - 5 - 1)</div>
+            <p class="text-slate-400">Big gap at the <span class="text-white font-semibold">top</span> (a 4th). The chord root is the <span class="text-emerald-400 font-semibold">highest note</span>.</p>
+            <div class="font-mono text-emerald-300 pt-1">C 1st Inv: E - G - C</div>
+          </div>
+          <div class="bg-studio-950 border border-slate-800 rounded-2xl p-3.5 space-y-1.5">
+            <div class="font-bold text-white text-sm">2nd Inversion (5 - 1 - 3)</div>
+            <p class="text-slate-400">Big gap at the <span class="text-white font-semibold">bottom</span> (a 4th). The chord root is the <span class="text-emerald-400 font-semibold">middle note</span>.</p>
+            <div class="font-mono text-emerald-300 pt-1">C 2nd Inv: G - C - E</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scale Chords Formula -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-amber-400">2. Scale Chord Formulas (Diatonic Chords)</h3>
+        <div class="bg-studio-950 border border-slate-800 rounded-2xl p-4 space-y-3 text-xs">
+          <div>
+            <div class="font-bold text-white mb-1">Major Scale Pattern (Uppercase = Major, Lowercase = Minor):</div>
+            <div class="grid grid-cols-7 gap-1 text-center font-mono">
+              <div class="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold">I<br><span class="text-[10px] font-sans">Maj</span></div>
+              <div class="p-2 rounded-lg bg-slate-800 text-slate-300">ii<br><span class="text-[10px] font-sans">min</span></div>
+              <div class="p-2 rounded-lg bg-slate-800 text-slate-300">iii<br><span class="text-[10px] font-sans">min</span></div>
+              <div class="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold">IV<br><span class="text-[10px] font-sans">Maj</span></div>
+              <div class="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold">V<br><span class="text-[10px] font-sans">Maj</span></div>
+              <div class="p-2 rounded-lg bg-amber-500/20 text-amber-300 font-bold">vi<br><span class="text-[10px] font-sans">min</span></div>
+              <div class="p-2 rounded-lg bg-slate-900 text-slate-500">vii°<br><span class="text-[10px] font-sans">dim</span></div>
+            </div>
+          </div>
+          <p class="text-slate-400">
+            <strong class="text-white">Pop Pro-Tip:</strong> 90% of pop songs use <span class="text-emerald-300 font-mono">I - V - vi - IV</span> (e.g., in C Major: <span class="font-mono text-white">C - G - Am - F</span>).
+          </p>
+          <div class="pt-1 border-t border-slate-800">
+            <div class="font-bold text-white mb-1">Natural Minor Scale Pattern:</div>
+            <div class="font-mono text-slate-300">i (min) &nbsp;•&nbsp; ii° (dim) &nbsp;•&nbsp; III (Maj) &nbsp;•&nbsp; iv (min) &nbsp;•&nbsp; v (min) &nbsp;•&nbsp; VI (Maj) &nbsp;•&nbsp; VII (Maj)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Missed Questions Review Modal -->
+  <div id="missed-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target===this) toggleMissedModal()">
+    <div class="bg-studio-900 border border-slate-700 rounded-3xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h2 class="text-lg font-bold text-white">Missed Questions Review</h2>
+        <button onclick="toggleMissedModal()" class="p-2 rounded-xl bg-studio-800 hover:bg-slate-700 text-slate-300">✕</button>
+      </div>
+      <div id="missed-list" class="space-y-2.5 text-sm">
+        <p class="text-slate-400 text-center py-6">No missed questions yet — keep up the clean streak!</p>
+      </div>
+      <div class="pt-2 flex justify-end">
+        <button onclick="clearMissed()" class="text-xs text-rose-400 hover:text-rose-300 font-medium">Clear History</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. MUSIC THEORY ENGINE & DATA DEFINITIONS
+       ========================================================================= */
+    const NOTE_NAMES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const NOTE_NAMES_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+    // Build 2-octave keyboard map: C3 (MIDI 48) to B4 (MIDI 71)
+    const START_MIDI = 48; // C3
+    const END_MIDI = 71;   // B4
+
+    const PIANO_KEYS = [];
+    for (let midi = START_MIDI; midi <= END_MIDI; midi++) {
+      const pitchClass = midi % 12;
+      const octave = Math.floor(midi / 12) - 1;
+      const isBlack = [1, 3, 6, 8, 10].includes(pitchClass);
+      PIANO_KEYS.push({
+        midi,
+        pitchClass,
+        octave,
+        isBlack,
+        sharpName: NOTE_NAMES_SHARP[pitchClass],
+        flatName: NOTE_NAMES_FLAT[pitchClass],
+        label: `${NOTE_NAMES_SHARP[pitchClass]}${octave}`
+      });
+    }
+
+    // Triad dictionary (Pitch classes 0-11, plus spelling for display)
+    const CHORD_LIBRARY = {
+      'C':   { root: 'C',  quality: 'major', pcs: [0, 4, 7],  notes: ['C', 'E', 'G'] },
+      'G':   { root: 'G',  quality: 'major', pcs: [7, 11, 2], notes: ['G', 'B', 'D'] },
+      'F':   { root: 'F',  quality: 'major', pcs: [5, 9, 0],  notes: ['F', 'A', 'C'] },
+      'D':   { root: 'D',  quality: 'major', pcs: [2, 6, 9],  notes: ['D', 'F#', 'A'] },
+      'A':   { root: 'A',  quality: 'major', pcs: [9, 1, 4],  notes: ['A', 'C#', 'E'] },
+      'E':   { root: 'E',  quality: 'major', pcs: [4, 8, 11], notes: ['E', 'G#', 'B'] },
+      'Bb':  { root: 'Bb', quality: 'major', pcs: [10, 2, 5], notes: ['Bb', 'D', 'F'] },
+      'Eb':  { root: 'Eb', quality: 'major', pcs: [3, 7, 10], notes: ['Eb', 'G', 'Bb'] },
+      'Ab':  { root: 'Ab', quality: 'major', pcs: [8, 0, 3],  notes: ['Ab', 'C', 'Eb'] },
+
+      'Am':  { root: 'A',  quality: 'minor', pcs: [9, 0, 4],  notes: ['A', 'C', 'E'] },
+      'Em':  { root: 'E',  quality: 'minor', pcs: [4, 7, 11], notes: ['E', 'G', 'B'] },
+      'Dm':  { root: 'D',  quality: 'minor', pcs: [2, 5, 9],  notes: ['D', 'F', 'A'] },
+      'Bm':  { root: 'B',  quality: 'minor', pcs: [11, 2, 6], notes: ['B', 'D', 'F#'] },
+      'F#m': { root: 'F#', quality: 'minor', pcs: [6, 9, 1],  notes: ['F#', 'A', 'C#'] },
+      'C#m': { root: 'C#', quality: 'minor', pcs: [1, 4, 8],  notes: ['C#', 'E', 'G#'] },
+      'Cm':  { root: 'C',  quality: 'minor', pcs: [0, 3, 7],  notes: ['C', 'Eb', 'G'] },
+      'Gm':  { root: 'G',  quality: 'minor', pcs: [7, 10, 2], notes: ['G', 'Bb', 'D'] },
+      'Fm':  { root: 'F',  quality: 'minor', pcs: [5, 8, 0],  notes: ['F', 'Ab', 'C'] },
+
+      // Diminished triads for 7th/2nd degrees in scale trainer
+      'Bdim':  { root: 'B',  quality: 'dim', pcs: [11, 2, 5], notes: ['B', 'D', 'F'] },
+      'F#dim': { root: 'F#', quality: 'dim', pcs: [6, 9, 0],  notes: ['F#', 'A', 'C'] },
+      'Edim':  { root: 'E',  quality: 'dim', pcs: [4, 7, 10], notes: ['E', 'G', 'Bb'] },
+      'C#dim': { root: 'C#', quality: 'dim', pcs: [1, 4, 7],  notes: ['C#', 'E', 'G'] },
+      'G#dim': { root: 'G#', quality: 'dim', pcs: [8, 11, 2], notes: ['G#', 'B', 'D'] },
+      'Adim':  { root: 'A',  quality: 'dim', pcs: [9, 0, 3],  notes: ['A', 'C', 'Eb'] }
+    };
+
+    const BEGINNER_CHORD_KEYS = ['C', 'G', 'F', 'Am', 'Em', 'Dm'];
+    const ALL_CHORD_KEYS = ['C', 'G', 'F', 'D', 'A', 'E', 'Bb', 'Eb', 'Am', 'Em', 'Dm', 'Bm', 'F#m', 'Cm', 'Gm'];
+
+    // Diatonic Scale Chords Database
+    const SCALE_CHORDS = {
+      'C Major': [
+        { degree: 'I',    chord: 'C',    role: 'Tonic (Home)' },
+        { degree: 'ii',   chord: 'Dm',   role: 'Supertonic' },
+        { degree: 'iii',  chord: 'Em',   role: 'Mediant' },
+        { degree: 'IV',   chord: 'F',    role: 'Subdominant' },
+        { degree: 'V',    chord: 'G',    role: 'Dominant' },
+        { degree: 'vi',   chord: 'Am',   role: 'Relative Minor' },
+        { degree: 'vii°', chord: 'Bdim', role: 'Leading Tone' }
+      ],
+      'G Major': [
+        { degree: 'I',    chord: 'G',     role: 'Tonic (Home)' },
+        { degree: 'ii',   chord: 'Am',    role: 'Supertonic' },
+        { degree: 'iii',  chord: 'Bm',    role: 'Mediant' },
+        { degree: 'IV',   chord: 'C',     role: 'Subdominant' },
+        { degree: 'V',    chord: 'D',     role: 'Dominant' },
+        { degree: 'vi',   chord: 'Em',    role: 'Relative Minor' },
+        { degree: 'vii°', chord: 'F#dim', role: 'Leading Tone' }
+      ],
+      'F Major': [
+        { degree: 'I',    chord: 'F',    role: 'Tonic (Home)' },
+        { degree: 'ii',   chord: 'Gm',   role: 'Supertonic' },
+        { degree: 'iii',  chord: 'Am',   role: 'Mediant' },
+        { degree: 'IV',   chord: 'Bb',   role: 'Subdominant' },
+        { degree: 'V',    chord: 'C',    role: 'Dominant' },
+        { degree: 'vi',   chord: 'Dm',   role: 'Relative Minor' },
+        { degree: 'vii°', chord: 'Edim', role: 'Leading Tone' }
+      ],
+      'D Major': [
+        { degree: 'I',    chord: 'D',     role: 'Tonic (Home)' },
+        { degree: 'ii',   chord: 'Em',    role: 'Supertonic' },
+        { degree: 'iii',  chord: 'F#m',   role: 'Mediant' },
+        { degree: 'IV',   chord: 'G',     role: 'Subdominant' },
+        { degree: 'V',    chord: 'A',     role: 'Dominant' },
+        { degree: 'vi',   chord: 'Bm',    role: 'Relative Minor' },
+        { degree: 'vii°', chord: 'C#dim', role: 'Leading Tone' }
+      ],
+      'A Major': [
+        { degree: 'I',    chord: 'A',     role: 'Tonic (Home)' },
+        { degree: 'ii',   chord: 'Bm',    role: 'Supertonic' },
+        { degree: 'iii',  chord: 'C#m',   role: 'Mediant' },
+        { degree: 'IV',   chord: 'D',     role: 'Subdominant' },
+        { degree: 'V',    chord: 'E',     role: 'Dominant' },
+        { degree: 'vi',   chord: 'F#m',   role: 'Relative Minor' },
+        { degree: 'vii°', chord: 'G#dim', role: 'Leading Tone' }
+      ],
+      'Bb Major': [
+        { degree: 'I',    chord: 'Bb',   role: 'Tonic (Home)' },
+        { degree: 'ii',   chord: 'Cm',   role: 'Supertonic' },
+        { degree: 'iii',  chord: 'Dm',   role: 'Mediant' },
+        { degree: 'IV',   chord: 'Eb',   role: 'Subdominant' },
+        { degree: 'V',    chord: 'F',    role: 'Dominant' },
+        { degree: 'vi',   chord: 'Gm',   role: 'Relative Minor' },
+        { degree: 'vii°', chord: 'Adim', role: 'Leading Tone' }
+      ],
+      'Eb Major': [
+        { degree: 'I',    chord: 'Eb',   role: 'Tonic (Home)' },
+        { degree: 'ii',   chord: 'Fm',   role: 'Supertonic' },
+        { degree: 'iii',  chord: 'Gm',   role: 'Mediant' },
+        { degree: 'IV',   chord: 'Ab',   role: 'Subdominant' },
+        { degree: 'V',    chord: 'Bb',   role: 'Dominant' },
+        { degree: 'vi',   chord: 'Cm',   role: 'Relative Minor' },
+        { degree: 'vii°', chord: 'Ddim', role: 'Leading Tone' }
+      ],
+      'A Minor': [
+        { degree: 'i',   chord: 'Am',   role: 'Tonic (Home)' },
+        { degree: 'ii°', chord: 'Bdim', role: 'Supertonic' },
+        { degree: 'III', chord: 'C',    role: 'Relative Major' },
+        { degree: 'iv',  chord: 'Dm',   role: 'Subdominant' },
+        { degree: 'v',   chord: 'Em',   role: 'Dominant' },
+        { degree: 'VI',  chord: 'F',    role: 'Submediant' },
+        { degree: 'VII', chord: 'G',    role: 'Subtonic' }
+      ],
+      'E Minor': [
+        { degree: 'i',   chord: 'Em',    role: 'Tonic (Home)' },
+        { degree: 'ii°', chord: 'F#dim', role: 'Supertonic' },
+        { degree: 'III', chord: 'G',     role: 'Relative Major' },
+        { degree: 'iv',  chord: 'Am',    role: 'Subdominant' },
+        { degree: 'v',   chord: 'Bm',    role: 'Dominant' },
+        { degree: 'VI',  chord: 'C',     role: 'Submediant' },
+        { degree: 'VII', chord: 'D',     role: 'Subtonic' }
+      ],
+      'D Minor': [
+        { degree: 'i',   chord: 'Dm',   role: 'Tonic (Home)' },
+        { degree: 'ii°', chord: 'Edim', role: 'Supertonic' },
+        { degree: 'III', chord: 'F',    role: 'Relative Major' },
+        { degree: 'iv',  chord: 'Gm',   role: 'Subdominant' },
+        { degree: 'v',   chord: 'Am',   role: 'Dominant' },
+        { degree: 'VI',  chord: 'Bb',   role: 'Submediant' },
+        { degree: 'VII', chord: 'C',    role: 'Subtonic' }
+      ]
+    };
+
+    /* =========================================================================
+       2. WEB AUDIO API WARM PIANO SYNTHESIZER (iOS/iPadOS & Desktop Safe)
+       ========================================================================= */
+    let audioCtx = null;
+    let masterCompressor = null;
+    let masterGain = null;
+    let isMuted = false;
+
+    async function ensureAudioReady() {
+      if (isMuted) return null;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return null;
+
+      if (!audioCtx) {
+        audioCtx = new AudioContextClass();
+
+        // Master compressor + gain ensures chords sound rich, loud, and never clip
+        masterCompressor = audioCtx.createDynamicsCompressor();
+        masterCompressor.threshold.setValueAtTime(-18, audioCtx.currentTime);
+        masterCompressor.knee.setValueAtTime(12, audioCtx.currentTime);
+        masterCompressor.ratio.setValueAtTime(4, audioCtx.currentTime);
+        masterCompressor.attack.setValueAtTime(0.005, audioCtx.currentTime);
+        masterCompressor.release.setValueAtTime(0.2, audioCtx.currentTime);
+
+        masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(0.85, audioCtx.currentTime);
+
+        masterCompressor.connect(masterGain);
+        masterGain.connect(audioCtx.destination);
+      }
+
+      if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+        try {
+          await audioCtx.resume();
+        } catch (err) {
+          // Will unlock on the next user gesture if called before interaction
+        }
+      }
+
+      // Play a 1-sample silent buffer to force iOS Safari audio hardware unlock
+      try {
+        const silentBuffer = audioCtx.createBuffer(1, 1, 22050);
+        const source = audioCtx.createBufferSource();
+        source.buffer = silentBuffer;
+        source.connect(audioCtx.destination);
+        source.start(0);
+      } catch (e) {}
+
+      return audioCtx.state === 'running' ? audioCtx : null;
+    }
+
+    // Unlock audio automatically on the very first user gesture anywhere on the page
+    ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(evtName => {
+      window.addEventListener(evtName, () => {
+        ensureAudioReady();
+      }, { once: true, passive: true });
+    });
+
+    function midiToFreq(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    async function playNote(midi, startTime = 0, duration = 1.45, velocity = 0.42) {
+      if (isMuted) return;
+      try {
+        const ctx = await ensureAudioReady();
+        if (!ctx) return;
+
+        const now = ctx.currentTime + startTime;
+        const freq = midiToFreq(midi);
+
+        // Warm electric-acoustic piano timbre: fundamental triangle + sine + octave overtone
+        const oscFundamental = ctx.createOscillator();
+        const oscWarmBody = ctx.createOscillator();
+        const oscHarmonic = ctx.createOscillator();
+
+        oscFundamental.type = 'triangle';
+        oscFundamental.frequency.setValueAtTime(freq, now);
+
+        oscWarmBody.type = 'sine';
+        oscWarmBody.frequency.setValueAtTime(freq, now);
+
+        oscHarmonic.type = 'sine';
+        oscHarmonic.frequency.setValueAtTime(freq * 2, now);
+
+        const bodyGain = ctx.createGain();
+        bodyGain.gain.setValueAtTime(0.55, now);
+
+        const harmonicGain = ctx.createGain();
+        harmonicGain.gain.setValueAtTime(0.22, now);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2600, now);
+        filter.frequency.exponentialRampToValueAtTime(750, now + duration);
+
+        // Clean ADSR envelope (10ms attack, smooth decay, gentle release)
+        const envGain = ctx.createGain();
+        envGain.gain.setValueAtTime(0.0001, now);
+        envGain.gain.linearRampToValueAtTime(velocity, now + 0.01);
+        envGain.gain.exponentialRampToValueAtTime(velocity * 0.48, now + 0.35);
+        envGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        oscFundamental.connect(filter);
+        oscWarmBody.connect(bodyGain);
+        bodyGain.connect(filter);
+        oscHarmonic.connect(harmonicGain);
+        harmonicGain.connect(filter);
+
+        filter.connect(envGain);
+        envGain.connect(masterCompressor);
+
+        oscFundamental.start(now);
+        oscWarmBody.start(now);
+        oscHarmonic.start(now);
+
+        oscFundamental.stop(now + duration + 0.05);
+        oscWarmBody.stop(now + duration + 0.05);
+        oscHarmonic.stop(now + duration + 0.05);
+
+        // Visual key depression feedback
+        setTimeout(() => {
+          const keyEl = document.querySelector(`[data-midi="${midi}"]`);
+          if (keyEl) {
+            keyEl.classList.add('pressed');
+            setTimeout(() => keyEl.classList.remove('pressed'), 220);
+          }
+        }, startTime * 1000);
+      } catch (e) {
+        // Safe fallback if browser blocks pre-gesture audio
+      }
+    }
+
+    function playChordMidis(midis) {
+      if (!midis || !midis.length) return;
+      midis.forEach((m, idx) => {
+        playNote(m, idx * 0.025, 1.5, 0.38);
+      });
+    }
+
+    function playCurrentChord() {
+      if (state.currentQuestion && state.currentQuestion.midis) {
+        playChordMidis(state.currentQuestion.midis);
+      }
+    }
+
+    function playArpeggio() {
+      if (state.currentQuestion && state.currentQuestion.midis) {
+        state.currentQuestion.midis.forEach((m, idx) => {
+          playNote(m, idx * 0.22, 1.35, 0.4);
+        });
+      }
+    }
+
+    async function testAudioChime() {
+      if (isMuted) toggleMute();
+      await ensureAudioReady();
+      // Play a pleasant C Major 9th arpeggio chime to confirm audio works
+      [60, 64, 67, 71].forEach((midi, idx) => {
+        playNote(midi, idx * 0.09, 1.1, 0.36);
+      });
+      const btn = document.getElementById('test-sound-btn');
+      const label = btn.querySelector('span');
+      const original = label.textContent;
+      label.textContent = 'Playing!';
+      setTimeout(() => { label.textContent = original; }, 900);
+    }
+
+    function toggleMute() {
+      isMuted = !isMuted;
+      document.getElementById('icon-sound-on').classList.toggle('hidden', isMuted);
+      document.getElementById('icon-sound-off').classList.toggle('hidden', !isMuted);
+      document.getElementById('audio-label').textContent = isMuted ? 'Sound: Off' : 'Sound: On';
+      if (!isMuted) {
+        ensureAudioReady();
+      }
+    }
+
+    /* =========================================================================
+       3. INTERACTIVE PIANO RENDERING
+       ========================================================================= */
+    function renderPiano() {
+      const container = document.getElementById('piano-container');
+      container.innerHTML = '';
+
+      const whiteKeys = PIANO_KEYS.filter(k => !k.isBlack);
+      const totalWhites = whiteKeys.length; // 14 white keys (C3..B4)
+      const whiteWidthPercent = 100 / totalWhites;
+
+      // Render White Keys
+      whiteKeys.forEach((key, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.midi = key.midi;
+        btn.style.left = `${index * whiteWidthPercent}%`;
+        btn.style.width = `${whiteWidthPercent}%`;
+        btn.className = 'white-key absolute top-0 bottom-0 flex flex-col justify-end items-center pb-2.5 focus:outline-none cursor-pointer';
+        btn.innerHTML = `<span class="text-[11px] font-bold text-slate-500 pointer-events-none">${key.sharpName}${key.octave === 3 ? '' : ''}</span>`;
+        btn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          playNote(key.midi, 0, 1.0, 0.3);
+        });
+        container.appendChild(btn);
+      });
+
+      // Render Black Keys positioned between white keys
+      let whiteIndex = 0;
+      PIANO_KEYS.forEach((key) => {
+        if (!key.isBlack) {
+          whiteIndex++;
+        } else {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.midi = key.midi;
+          const blackWidth = whiteWidthPercent * 0.62;
+          const leftPos = (whiteIndex * whiteWidthPercent) - (blackWidth / 2);
+          btn.style.left = `${leftPos}%`;
+          btn.style.width = `${blackWidth}%`;
+          btn.className = 'black-key absolute top-0 h-[62%] flex flex-col justify-end items-center pb-2 focus:outline-none cursor-pointer';
+          btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            playNote(key.midi, 0, 1.0, 0.3);
+          });
+          container.appendChild(btn);
+        }
+      });
+    }
+
+    function highlightPianoMidis(midis = []) {
+      document.querySelectorAll('#piano-container button').forEach(el => {
+        el.classList.remove('highlighted', 'bass-note');
+      });
+
+      if (!midis || midis.length === 0) return;
+
+      const sorted = [...midis].sort((a, b) => a - b);
+      sorted.forEach((midi, idx) => {
+        const keyEl = document.querySelector(`[data-midi="${midi}"]`);
+        if (keyEl) {
+          keyEl.classList.add('highlighted');
+          if (idx === 0) {
+            keyEl.classList.add('bass-note');
+          }
+        }
+      });
+    }
+
+    /* =========================================================================
+       4. APPLICATION STATE & QUESTION GENERATION
+       ========================================================================= */
+    const state = {
+      mode: 'inversions',     // 'inversions' | 'scales'
+      keyPool: 'beginner',    // 'beginner' | 'all'
+      inputStyle: 'type',     // 'type' | 'choice'
+      currentQuestion: null,
+      answered: false,
+      streak: 0,
+      correct: 0,
+      total: 0,
+      missed: [],
+      lastQuestionSignature: ''
+    };
+
+    /**
+     * Builds MIDI notes (within C3..B4) for a chord in a given inversion:
+     * inversion: 0 = Root, 1 = 1st Inversion, 2 = 2nd Inversion
+     */
+    function buildInversionMidis(chordSymbol, inversion) {
+      const chord = CHORD_LIBRARY[chordSymbol];
+      // Order pitch classes according to inversion
+      const orderedPcs = [
+        chord.pcs[inversion % 3],
+        chord.pcs[(inversion + 1) % 3],
+        chord.pcs[(inversion + 2) % 3]
+      ];
+
+      // Place bass note in C3..B3 (MIDI 48..59) so all 3 notes fit comfortably inside C3..B4 (48..71)
+      let bassMidi = 48 + orderedPcs[0];
+      const midis = [bassMidi];
+
+      for (let i = 1; i < 3; i++) {
+        let nextMidi = 48 + orderedPcs[i];
+        while (nextMidi <= midis[i - 1]) {
+          nextMidi += 12;
+        }
+        midis.push(nextMidi);
+      }
+
+      // If top note exceeds B4 (71), shift down an octave if possible
+      if (midis[2] > 71 && midis[0] - 12 >= 48) {
+        return midis.map(m => m - 12);
+      }
+      return midis;
+    }
+
+    function inversionLabel(inv) {
+      if (inv === 0) return 'Root Position';
+      if (inv === 1) return '1st Inversion';
+      return '2nd Inversion';
+    }
+
+    function generateInversionQuestion() {
+      const pool = state.keyPool === 'beginner' ? BEGINNER_CHORD_KEYS : ALL_CHORD_KEYS;
+      let chordSymbol, inversion, sig;
+
+      // Avoid repeating the exact same question twice in a row
+      do {
+        chordSymbol = pool[Math.floor(Math.random() * pool.length)];
+        inversion = Math.floor(Math.random() * 3);
+        sig = `INV:${chordSymbol}:${inversion}`;
+      } while (sig === state.lastQuestionSignature);
+
+      state.lastQuestionSignature = sig;
+      const chord = CHORD_LIBRARY[chordSymbol];
+      const midis = buildInversionMidis(chordSymbol, inversion);
+
+      // Determine note names from bottom to top for educational feedback
+      const orderedNotes = [
+        chord.notes[inversion % 3],
+        chord.notes[(inversion + 1) % 3],
+        chord.notes[(inversion + 2) % 3]
+      ];
+
+      // Build 4 multiple choice options
+      const choices = new Set([`${chordSymbol} — ${inversionLabel(inversion)}`]);
+      while (choices.size < 4) {
+        const randChord = pool[Math.floor(Math.random() * pool.length)];
+        const randInv = Math.floor(Math.random() * 3);
+        choices.add(`${randChord} — ${inversionLabel(randInv)}`);
+      }
+
+      state.currentQuestion = {
+        type: 'inversions',
+        chordSymbol,
+        inversion,
+        midis,
+        orderedNotes,
+        canonicalAnswer: `${chordSymbol} ${inversionLabel(inversion)}`,
+        choices: Array.from(choices).sort(() => Math.random() - 0.5)
+      };
+
+      // Update UI
+      document.getElementById('stage-badge').textContent = 'Identify Chord & Inversion';
+      document.getElementById('legend-container').classList.remove('hidden');
+      document.getElementById('question-subtext').textContent = 'Amber = Lowest Bass Note • Green = Upper Chord Tones';
+      document.getElementById('question-prompt').textContent = 'What chord and inversion is highlighted?';
+      document.getElementById('answer-input').placeholder = 'e.g., C first inversion, Fm 2nd, G root...';
+      document.getElementById('quick-chips').classList.remove('hidden');
+
+      highlightPianoMidis(midis);
+      renderChoicesIfNeeded();
+      playChordMidis(midis);
+    }
+
+    function generateScaleQuestion() {
+      const selectedKey = document.getElementById('scale-key-select').value;
+      const includeDim = document.getElementById('include-dim-checkbox').checked;
+      const availableKeys = Object.keys(SCALE_CHORDS);
+
+      let keyName, item, sig;
+      do {
+        keyName = selectedKey === 'RANDOM'
+          ? availableKeys[Math.floor(Math.random() * availableKeys.length)]
+          : selectedKey;
+
+        const scaleDegrees = SCALE_CHORDS[keyName].filter(d => includeDim || !d.degree.includes('°'));
+        item = scaleDegrees[Math.floor(Math.random() * scaleDegrees.length)];
+        sig = `SCALE:${keyName}:${item.degree}`;
+      } while (sig === state.lastQuestionSignature);
+
+      state.lastQuestionSignature = sig;
+      const midis = buildInversionMidis(item.chord, 0);
+
+      state.currentQuestion = {
+        type: 'scales',
+        keyName,
+        degree: item.degree,
+        role: item.role,
+        chordSymbol: item.chord,
+        midis,
+        canonicalAnswer: item.chord
+      };
+
+      // Hide keys on piano until user answers or asks for hint!
+      highlightPianoMidis([]);
+
+      document.getElementById('stage-badge').textContent = `Key of ${keyName}`;
+      document.getElementById('legend-container').classList.add('hidden');
+      document.getElementById('question-subtext').textContent = `Diatonic Chord Scale (${item.role})`;
+      document.getElementById('question-prompt').innerHTML =
+        `What is the <span class="text-emerald-400 font-mono underline decoration-emerald-500/40 underline-offset-4">${item.degree}</span> chord in <span class="text-amber-300">${keyName}</span>?`;
+      document.getElementById('answer-input').placeholder = 'Type chord name (e.g., Bm, F#m, Bb, C)...';
+      document.getElementById('quick-chips').classList.add('hidden');
+    }
+
+    function generateNewQuestion() {
+      state.answered = false;
+      const inputEl = document.getElementById('answer-input');
+      inputEl.value = '';
+      inputEl.disabled = false;
+      document.getElementById('submit-btn').disabled = false;
+      document.getElementById('feedback-box').classList.add('hidden');
+
+      if (state.mode === 'inversions') {
+        generateInversionQuestion();
+      } else {
+        generateScaleQuestion();
+      }
+
+      if (state.inputStyle === 'type' || state.mode === 'scales') {
+        setTimeout(() => inputEl.focus(), 40);
+      }
+    }
+
+    /* =========================================================================
+       5. NATURAL LANGUAGE / FUZZY ANSWER PARSING
+       ========================================================================= */
+    function normalizeChordRoot(raw) {
+      if (!raw) return null;
+      let cleaned = raw.trim()
+        .replace(/sharp/gi, '#')
+        .replace(/flat/gi, 'b')
+        .replace(/♯/g, '#')
+        .replace(/♭/g, 'b');
+
+      // Extract root letter + optional accidental (# or b)
+      const rootMatch = cleaned.match(/^([a-gA-G])([#bB])?/);
+      if (!rootMatch) return null;
+
+      const letter = rootMatch[1].toUpperCase();
+      let accidental = '';
+      if (rootMatch[2]) {
+        accidental = rootMatch[2] === '#' ? '#' : 'b';
+      }
+
+      const rest = cleaned.slice(rootMatch[0].length).trim().toLowerCase();
+
+      let quality = 'major';
+      if (rest.startsWith('dim') || rest.includes('°') || rest.startsWith('o')) {
+        quality = 'dim';
+      } else if (
+        rest === 'm' ||
+        rest.startsWith('min') ||
+        rest.startsWith('-') ||
+        (rest.startsWith('m') && !rest.startsWith('maj'))
+      ) {
+        quality = 'minor';
+      }
+
+      // Normalize enharmonic equivalents (e.g. Db -> C#, D# -> Eb, Gb -> F#, G# -> Ab, A# -> Bb)
+      const enharmonicMap = {
+        'Db': 'C#',
+        'D#': 'Eb',
+        'Gb': 'F#',
+        'G#': 'Ab',
+        'A#': 'Bb'
+      };
+      let root = letter + accidental;
+      if (enharmonicMap[root]) {
+        // Keep Bb, Eb, F#, C# in their standard pop keys
+        if (['C#', 'Eb', 'F#', 'Ab', 'Bb'].includes(enharmonicMap[root])) {
+          root = enharmonicMap[root];
+        }
+      }
+
+      if (quality === 'dim') return `${root}dim`;
+      return quality === 'minor' ? `${root}m` : root;
+    }
+
+    function parseInversionUserAnswer(input) {
+      const str = input.trim();
+      if (!str) return null;
+
+      // Determine inversion from text
+      const lower = str.toLowerCase();
+      let inversion = null;
+
+      if (/\b(root|0|base|fundamental)\b/.test(lower)) {
+        inversion = 0;
+      } else if (/\b(1st|first|1)\b/.test(lower)) {
+        inversion = 1;
+      } else if (/\b(2nd|second|2)\b/.test(lower)) {
+        inversion = 2;
+      }
+
+      // Strip inversion words to isolate chord token
+      const chordPart = str
+        .replace(/\b(root|position|pos|1st|first|2nd|second|inversion|inv|chord)\b/gi, '')
+        .replace(/[-—:,]/g, ' ')
+        .trim();
+
+      // Rejoin e.g. "F minor" -> "Fminor"
+      const compactChord = chordPart.replace(/\s+/g, '');
+      const chordSymbol = normalizeChordRoot(compactChord);
+
+      if (!chordSymbol || inversion === null) return null;
+      return { chordSymbol, inversion };
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      if (state.answered) {
+        generateNewQuestion();
+        return;
+      }
+
+      const raw = document.getElementById('answer-input').value.trim();
+      if (!raw) return;
+
+      if (state.mode === 'inversions') {
+        const parsed = parseInversionUserAnswer(raw);
+        if (!parsed) {
+          showInputFormatNudge();
+          return;
+        }
+        const isCorrect =
+          parsed.chordSymbol === state.currentQuestion.chordSymbol &&
+          parsed.inversion === state.currentQuestion.inversion;
+        evaluateAnswer(isCorrect, `${parsed.chordSymbol} ${inversionLabel(parsed.inversion)}`);
+      } else {
+        const compact = raw.replace(/\s+/g, '');
+        const parsedChord = normalizeChordRoot(compact);
+        if (!parsedChord) {
+          showInputFormatNudge();
+          return;
+        }
+        const isCorrect = parsedChord === state.currentQuestion.chordSymbol;
+        evaluateAnswer(isCorrect, parsedChord);
+      }
+    }
+
+    function showInputFormatNudge() {
+      const inputEl = document.getElementById('answer-input');
+      inputEl.classList.add('border-amber-500');
+      setTimeout(() => inputEl.classList.remove('border-amber-500'), 700);
+    }
+
+    function evaluateAnswer(isCorrect, userDisplayAnswer) {
+      state.answered = true;
+      state.total++;
+
+      const inputEl = document.getElementById('answer-input');
+      inputEl.disabled = true;
+      document.getElementById('submit-btn').disabled = true;
+
+      if (isCorrect) {
+        state.correct++;
+        state.streak++;
+      } else {
+        state.streak = 0;
+        recordMissedQuestion(userDisplayAnswer);
+      }
+
+      updateStatsUI();
+
+      // Reveal visual & audio feedback
+      const q = state.currentQuestion;
+      highlightPianoMidis(q.midis);
+      playChordMidis(q.midis);
+
+      const feedbackBox = document.getElementById('feedback-box');
+      const feedbackIcon = document.getElementById('feedback-icon');
+      const feedbackTitle = document.getElementById('feedback-title');
+      const feedbackDetail = document.getElementById('feedback-detail');
+      const feedbackTheory = document.getElementById('feedback-theory');
+
+      feedbackBox.classList.remove('hidden', 'bg-emerald-950/60', 'border-emerald-500/40', 'bg-rose-950/60', 'border-rose-500/40');
+
+      if (isCorrect) {
+        feedbackBox.classList.add('bg-emerald-950/60', 'border-emerald-500/40');
+        feedbackIcon.textContent = '✅';
+        feedbackTitle.textContent = `Spot on! ${q.canonicalAnswer}`;
+        feedbackTitle.className = 'font-bold text-base sm:text-lg text-emerald-300';
+      } else {
+        feedbackBox.classList.add('bg-rose-950/60', 'border-rose-500/40');
+        feedbackIcon.textContent = '❌';
+        feedbackTitle.textContent = `Not quite — it's ${q.canonicalAnswer}`;
+        feedbackTitle.className = 'font-bold text-base sm:text-lg text-rose-300';
+      }
+
+      if (q.type === 'inversions') {
+        const chordInfo = CHORD_LIBRARY[q.chordSymbol];
+        feedbackDetail.textContent = `Notes from bottom to top: ${q.orderedNotes.join(' – ')}. (Root triad is ${chordInfo.notes.join(' – ')})`;
+        feedbackTheory.textContent = q.inversion === 0
+          ? 'Root Position: Root is on the bottom.'
+          : q.inversion === 1
+            ? '1st Inversion: 3rd is in the bass, Root is on top.'
+            : '2nd Inversion: 5th is in the bass, Root is in the middle.';
+      } else {
+        const chordInfo = CHORD_LIBRARY[q.chordSymbol];
+        const scaleList = SCALE_CHORDS[q.keyName]
+          .slice(0, 6)
+          .map(s => `${s.degree}=${s.chord}`)
+          .join('  |  ');
+        feedbackDetail.textContent = `The ${q.degree} chord in ${q.keyName} is ${q.chordSymbol} (${chordInfo.notes.join(' – ')}).`;
+        feedbackTheory.textContent = `Full Key Map: ${scaleList}`;
+      }
+
+      document.getElementById('next-btn').focus();
+    }
+
+    function revealHint() {
+      if (state.answered) return;
+      const q = state.currentQuestion;
+      if (q.type === 'inversions') {
+        const chordInfo = CHORD_LIBRARY[q.chordSymbol];
+        const fb = document.getElementById('feedback-box');
+        fb.classList.remove('hidden', 'bg-rose-950/60', 'border-rose-500/40');
+        fb.classList.add('bg-emerald-950/40', 'border-emerald-500/30');
+        document.getElementById('feedback-icon').textContent = '💡';
+        document.getElementById('feedback-title').textContent = 'Hint';
+        document.getElementById('feedback-title').className = 'font-bold text-base text-amber-300';
+        document.getElementById('feedback-detail').textContent = `Highlighted notes from bottom to top: ${q.orderedNotes.join(' – ')}.`;
+        document.getElementById('feedback-theory').textContent = `Find which note is the root of the ${chordInfo.quality} triad!`;
+      } else {
+        highlightPianoMidis(q.midis);
+        playChordMidis(q.midis);
+      }
+    }
+
+    /* =========================================================================
+       6. UI HELPERS, MULTIPLE CHOICE & MISSED TRACKING
+       ========================================================================= */
+    function switchMode(newMode) {
+      state.mode = newMode;
+
+      const tabInv = document.getElementById('tab-inversions');
+      const tabScales = document.getElementById('tab-scales');
+      const ctrlInv = document.getElementById('controls-inversions');
+      const ctrlScales = document.getElementById('controls-scales');
+
+      if (newMode === 'inversions') {
+        tabInv.className = 'flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-emerald-600 text-white shadow-md';
+        tabScales.className = 'flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-semibold transition-all text-slate-400 hover:text-white';
+        ctrlInv.classList.remove('hidden');
+        ctrlScales.classList.add('hidden');
+        setInputStyle(state.inputStyle);
+      } else {
+        tabScales.className = 'flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-emerald-600 text-white shadow-md';
+        tabInv.className = 'flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-semibold transition-all text-slate-400 hover:text-white';
+        ctrlScales.classList.remove('hidden');
+        ctrlScales.classList.add('flex');
+        ctrlInv.classList.add('hidden');
+        // Always show text input for Scale Chords
+        document.getElementById('answer-type-container').classList.remove('hidden');
+        document.getElementById('answer-choice-container').classList.add('hidden');
+      }
+
+      generateNewQuestion();
+    }
+
+    function setKeyPool(pool) {
+      state.keyPool = pool;
+      document.getElementById('pool-beginner').className = pool === 'beginner'
+        ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-emerald-300 transition'
+        : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+      document.getElementById('pool-all').className = pool === 'all'
+        ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-emerald-300 transition'
+        : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+      generateNewQuestion();
+    }
+
+    function setInputStyle(style) {
+      state.inputStyle = style;
+      document.getElementById('input-type-btn').className = style === 'type'
+        ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-white transition'
+        : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+      document.getElementById('input-choice-btn').className = style === 'choice'
+        ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-white transition'
+        : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition';
+
+      if (state.mode === 'inversions') {
+        document.getElementById('answer-type-container').classList.toggle('hidden', style !== 'type');
+        document.getElementById('answer-choice-container').classList.toggle('hidden', style !== 'choice');
+        renderChoicesIfNeeded();
+      }
+    }
+
+    function renderChoicesIfNeeded() {
+      const container = document.getElementById('answer-choice-container');
+      if (state.mode !== 'inversions' || state.inputStyle !== 'choice' || !state.currentQuestion) return;
+
+      container.innerHTML = '';
+      state.currentQuestion.choices.forEach(choiceText => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'p-4 rounded-2xl bg-studio-950 hover:bg-studio-800 border-2 border-slate-800 hover:border-emerald-500/60 text-left font-bold text-sm sm:text-base text-white transition active:scale-98';
+        btn.textContent = choiceText;
+        btn.onclick = () => {
+          if (state.answered) return;
+          const isCorrect = choiceText === `${state.currentQuestion.chordSymbol} — ${inversionLabel(state.currentQuestion.inversion)}`;
+          evaluateAnswer(isCorrect, choiceText);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function appendText(suffix) {
+      const inputEl = document.getElementById('answer-input');
+      if (inputEl.disabled) return;
+      inputEl.value = inputEl.value.trim() + suffix;
+      inputEl.focus();
+    }
+
+    function onScaleKeyChange() {
+      generateNewQuestion();
+    }
+
+    function updateStatsUI() {
+      document.getElementById('stat-streak').textContent = `${state.streak} 🔥`;
+      document.getElementById('stat-score').textContent = `${state.correct}/${state.total}`;
+      const pct = state.total > 0 ? Math.round((state.correct / state.total) * 100) : 0;
+      document.getElementById('stat-accuracy').textContent = state.total > 0 ? `(${pct}%)` : '(—)';
+      document.getElementById('missed-count').textContent = state.missed.length;
+    }
+
+    function recordMissedQuestion(userAns) {
+      const q = state.currentQuestion;
+      const promptDesc = q.type === 'inversions'
+        ? `Keyboard: ${q.orderedNotes.join(' - ')}`
+        : `${q.degree} chord in ${q.keyName}`;
+
+      state.missed.unshift({
+        prompt: promptDesc,
+        correct: q.canonicalAnswer,
+        yours: userAns
+      });
+      renderMissedList();
+    }
+
+    function renderMissedList() {
+      const list = document.getElementById('missed-list');
+      if (state.missed.length === 0) {
+        list.innerHTML = '<p class="text-slate-400 text-center py-6">No missed questions yet — keep up the clean streak!</p>';
+        return;
+      }
+      list.innerHTML = state.missed.map(item => `
+        <div class="bg-studio-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3">
+          <div>
+            <div class="text-xs text-slate-400">${item.prompt}</div>
+            <div class="font-bold text-emerald-400 text-sm mt-0.5">Correct: ${item.correct}</div>
+          </div>
+          <div class="text-xs text-rose-400 font-mono bg-rose-950/40 px-2.5 py-1 rounded-lg border border-rose-500/20">
+            You: ${item.yours}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function clearMissed() {
+      state.missed = [];
+      updateStatsUI();
+      renderMissedList();
+    }
+
+    function toggleCheatSheet() {
+      document.getElementById('cheatsheet-modal').classList.toggle('hidden');
+    }
+
+    function toggleMissedModal() {
+      document.getElementById('missed-modal').classList.toggle('hidden');
+    }
+
+    /* =========================================================================
+       7. KEYBOARD SHORTCUTS & BOOTSTRAP
+       ========================================================================= */
+    document.addEventListener('keydown', (e) => {
+      // Spacebar replays chord sound when not actively typing spaces inside input
+      if (e.code === 'Space' && document.activeElement.id !== 'answer-input') {
+        e.preventDefault();
+        playCurrentChord();
+      }
+      // Escape closes open modals
+      if (e.key === 'Escape') {
+        document.getElementById('cheatsheet-modal').classList.add('hidden');
+        document.getElementById('missed-modal').classList.add('hidden');
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderPiano();
+      generateNewQuestion();
+    });
+  </script>
+</body>
+</html>
